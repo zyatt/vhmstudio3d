@@ -389,6 +389,11 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.work-info').forEach((box) => {
         box.style.setProperty('--info-accent', accent);
       });
+      // Mesma cor de destaque também no bloco mobile (grid 2x2 que substitui
+      // os cartões flutuantes em telas menores) — antes ficava só no laranja
+      // fixo por não receber essa variável.
+      const mobileBlock = document.getElementById('work-info-mobile');
+      if (mobileBlock) mobileBlock.style.setProperty('--info-accent', accent);
     }
 
     function applyDominantColor(card) {
@@ -532,13 +537,17 @@ document.addEventListener('DOMContentLoaded', () => {
       infoBoxes.forEach((box) => box.classList.add('is-visible'));
 
       // Reinicia a animação da linha + textos a cada troca de card: remove
-      // a classe, força reflow (lê offsetWidth) e reaplica, para que a
-      // transição de width/opacity comece do zero em vez de "pular" direto
-      // pro estado final quando o card muda rápido.
+      // a classe e reaplica no frame seguinte, para que a transição de
+      // width/opacity comece do zero em vez de "pular" direto pro estado
+      // final quando o card muda rápido. O reflow forçado (offsetWidth) foi
+      // removido daqui: ele era síncrono e caro bem no meio do drag; como o
+      // navegador já faz um layout entre o remove e o add de classe através
+      // de dois requestAnimationFrame, o efeito visual continua o mesmo.
       infoBoxes.forEach((box) => box.classList.remove('is-revealing'));
-      void infoBoxes[0]?.offsetWidth;
       requestAnimationFrame(() => {
-        infoBoxes.forEach((box) => box.classList.add('is-revealing'));
+        requestAnimationFrame(() => {
+          infoBoxes.forEach((box) => box.classList.add('is-revealing'));
+        });
       });
     }
 
@@ -561,6 +570,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const CENTER_POP_Z = 140;   // px que o card central "salta" pra frente (translateZ)
     const DEPTH_STEP = 60;      // px de profundidade que cada card recua por slot
 
+    // Escala da FOTO dentro do card (não do card em si): no centro ela
+    // "estoura" pra fora da moldura, nas laterais fica recuada. Interpolamos
+    // entre esses dois valores conforme a distância até o centro, em vez de
+    // aplicar via CSS só quando .is-center é alcançado — assim o crescimento
+    // acontece de forma contínua durante a transição, não só no instante em
+    // que o card vira central. Os pares (central, lateral) variam por
+    // largura de tela, replicando os valores que antes ficavam fixos nas
+    // media queries do CSS.
+    function getImgScales() {
+      const w = window.innerWidth;
+      if (w <= 420) return { center: 1.05, side: 0.8 };
+      if (w <= 700) return { center: 1.15, side: 0.8 };
+      return { center: 1.25, side: 0.92 };
+    }
+    let imgScales = getImgScales();
+    window.addEventListener('resize', () => { imgScales = getImgScales(); }, { passive: true });
+    // Referência cacheada de .work-card-img de cada card (mesma ordem de `cards`),
+    // pra não fazer querySelector dentro do loop de render a cada frame.
+    const cardImgs = cards.map((card) => card.querySelector('.work-card-img'));
+
     let active = 0;          // índice do card central (pode ser fracionário durante o drag)
     let dragging = false;
     let moved = false;       // virou drag de verdade (passou do threshold)?
@@ -569,6 +598,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let pointerId = null;
     const DRAG_THRESHOLD = 6; // px — abaixo disso, tratamos como clique
     let rafPending = false;  // throttle de render durante o drag
+
+    // Cache do índice central anterior: dá pra pular por completo o toggle
+    // de classes/dots/updateInfo quando o card em destaque não mudou entre
+    // dois frames — o caso comum durante o drag, que dispara render()
+    // dezenas de vezes por segundo mas só troca de "vencedor" às vezes.
+    let lastCenterIdx = null;
 
     function render() {
       cards.forEach((card, i) => {
@@ -579,6 +614,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (dist < -N / 2) dist += N;
 
         const absDist = Math.abs(dist);
+
+        // Fora do alcance visível: só zera a opacidade (se ainda não estiver
+        // zerada) e pula o resto — evita recalcular transform/zIndex/classe
+        // de cards que o usuário não está vendo mesmo.
+        if (absDist > MAX_VISIBLE_DIST) {
+          if (card.style.opacity !== '0') card.style.opacity = 0;
+          return;
+        }
 
         const x = dist * SLOT_W;
         const rot = dist * ROT_STEP;
@@ -593,14 +636,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         card.style.transform =
           `translate(-50%, -50%) translateX(${x}px) translateZ(${depthZ}px) rotate(${rot}deg) scale(${scale})`;
-        card.style.opacity = absDist > MAX_VISIBLE_DIST ? 0 : opacity;
+        card.style.opacity = opacity;
         card.style.zIndex = z;
         card.classList.toggle('is-center', absDist < 0.5);
+
+        // Crescimento da foto proporcional à distância: em absDist=0 é
+        // IMG_SCALE_CENTER, a partir de absDist=1 (já um slot de distância)
+        // é IMG_SCALE_SIDE — clampado pra não continuar encolhendo depois disso.
+        const imgT = Math.min(absDist, 1); // 0 = centro, 1 = já é vizinho
+        const imgScale = imgScales.center + (imgScales.side - imgScales.center) * imgT;
+        const imgEl = cardImgs[i];
+        if (imgEl) {
+          imgEl.style.transform = `scale(${imgScale})`;
+          imgEl.style.setProperty('--img-scale', imgScale);
+        }
       });
 
       const idx = ((Math.round(active) % N) + N) % N;
-      dots.forEach((dot, i) => dot.classList.toggle('is-active', i === idx));
-      updateInfo(false);
+      if (idx !== lastCenterIdx) {
+        lastCenterIdx = idx;
+        dots.forEach((dot, i) => dot.classList.toggle('is-active', i === idx));
+        updateInfo(false);
+      }
     }
 
     // Durante o drag, agrupa os pointermove no próximo frame do navegador

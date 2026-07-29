@@ -350,7 +350,7 @@
      infinitamente o tempo todo, mesmo com a seção fora da tela */
   .work-bg.is-paused span{ animation-play-state:paused; }
   @media (max-width:700px){
-    .work-bg span{ filter:blur(40px); opacity:.32; }
+    .work-bg span{ filter:blur(30px) saturate(1.5); opacity:.65; }
   }
 
   .work-pin-head{
@@ -401,6 +401,13 @@
   }
   .work-card.is-center{ cursor:grab; }
   .work-stage.is-dragging .work-card{cursor:grabbing;}
+  /* Durante o arraste o JS já reescreve transform/opacity a cada frame;
+     deixar a transition de box-shadow/transform ativa ao mesmo tempo soma
+     trabalho de composição desnecessário sobre cada card, todo frame. */
+  .work-stage.is-dragging .work-card-frame,
+  .work-stage.is-dragging .work-card-img{
+    transition:none;
+  }
 
   /* Moldura tipo polaroid: fica no lugar, recebe a sombra e o fundo.
      Menor que a imagem no card central, de propósito — é só a "base"
@@ -422,22 +429,24 @@
   /* A imagem fica FORA da moldura (irmã, não filha, do frame) — assim pode
      crescer além do tamanho do card sem ser cortada pelo overflow:hidden
      do frame. No card central ela cresce bem além da moldura, "estourando"
-     pra fora do quadro branco — efeito pôster/destaque. */
+     pra fora do quadro branco — efeito pôster/destaque.
+     A escala em si (0.92 lateral → 1.25 central) agora é calculada pelo JS
+     a cada frame em render(), interpolada pela distância até o centro, pra
+     crescer de forma contínua durante a transição em vez de saltar só
+     quando a classe .is-center é alcançada. Aqui fica só o valor inicial
+     (antes do primeiro render) como fallback. */
   .work-card-img{
     position:absolute;
     inset:0;
     display:flex;
     align-items:center;
     justify-content:center;
-    transition:transform .4s ease;
-    transform:scale(0.92); /* nos cards não-centrais, a foto fica levemente recuada dentro da moldura */
+    transform:scale(0.92);
   }
-  .work-card.is-center .work-card-img{
-    transform:scale(1.25); /* no card central, a foto estoura um pouco pra fora da moldura branca */
-  }
-  /* Leve zoom extra ao passar o mouse sobre a imagem em destaque */
+  /* Leve zoom extra ao passar o mouse sobre a imagem em destaque — soma-se
+     por cima do scale que o JS já aplicou via variável CSS. */
   .work-card.is-center:hover .work-card-img{
-    transform:scale(1.3);
+    transform:scale(calc(var(--img-scale, 1.25) * 1.04));
   }
   .work-card-img img{
     width:100%;
@@ -485,15 +494,12 @@
     #work{padding:clamp(80px,9vh,110px) 0 20px;}
     .work-stage{height:min(380px, 40vh);}
     .work-card{width:68vw; height:min(300px, 34vh);}
-    .work-card.is-center .work-card-img{ transform:scale(1.15); }
-    .work-card:not(.is-center) .work-card-img{ transform:scale(0.8); }
     .work-hint{ order:2; margin-top:14px; }
     .work-progress{ order:3; }
   }
   @media (max-width:420px){
     .work-stage{height:min(320px, 36vh);}
     .work-card{width:62vw; height:min(250px, 30vh);}
-    .work-card.is-center .work-card-img{ transform:scale(1.05); }
   }
 
   /* ---- Bloco de dados para telas menores (substitui os work-info flutuantes) ----
@@ -535,7 +541,7 @@
       font-weight:600;
       letter-spacing:.12em;
       text-transform:uppercase;
-      color:var(--pla-orange);
+      color:var(--info-accent, var(--pla-orange));
       margin-bottom:5px;
       opacity:1;
       transform:none;
@@ -572,78 +578,60 @@
      nasce no meio e se expande para os lados (.work-info-line), e só depois
      o texto (label + valor) surge por baixo dela. Ver updateInfo() / classe
      .is-revealing em script.js. ---- */
-  /* Cada bloco vira um pequeno "cartão" compacto: fundo translúcido com
-     blur (legibilidade sobre o work-bg animado) + uma faixa diagonal que
-     nasce do canto da janela mais próximo e escoa por trás do texto,
-     nas cores da marca (laranja PLA / tinta), reforçando a leitura de
-     "informação grudada no canto" sem competir com o card central. */
+  /* Cada bloco é uma "etiqueta técnica" ancorada na borda real da tela:
+     um conector (linha + ponto) sai da margem da viewport e entra no card,
+     como uma cota de desenho técnico apontando um dado da peça. O card em
+     si carrega um número de índice discreto (01–04) e o rótulo/valor. */
   .work-info{
     position:absolute;
     width:max-content;
-    white-space:nowrap;
-    padding:14px 16px;
-    border-radius:14px;
+    max-width:220px;
+    white-space:normal;
+    padding:14px 18px 14px 20px;
+    border-radius:4px;
     font-family:var(--f-mono);
-    background:linear-gradient(155deg, rgba(250,250,248,.9), rgba(250,250,248,.68));
-    -webkit-backdrop-filter:blur(14px) saturate(1.4);
-    backdrop-filter:blur(14px) saturate(1.4);
-    border:1px solid rgba(255,255,255,.5);
-    box-shadow:0 1px 0 rgba(255,255,255,.7) inset, 0 16px 34px -18px rgba(20,20,20,.35);
+    background:linear-gradient(155deg, rgba(250,250,248,.95), rgba(250,250,248,.8));
+    -webkit-backdrop-filter:blur(16px) saturate(1.4);
+    backdrop-filter:blur(16px) saturate(1.4);
+    border:1px solid rgba(20,20,20,.08);
+    border-left:2px solid var(--info-accent, var(--pla-orange));
+    box-shadow:0 24px 44px -20px rgba(20,20,20,.4), 0 2px 6px -2px rgba(20,20,20,.1);
     opacity:0;
-    transform:translateY(10px);
-    transition:opacity .5s ease, transform .5s ease;
     pointer-events:none;
     z-index:70;
+    transition:opacity .6s cubic-bezier(.16,.8,.24,1), transform .6s cubic-bezier(.16,.8,.24,1);
   }
-  .work-info.is-visible{ opacity:1; transform:translateY(0); }
+  /* variante espelhada para os cards do lado direito: acento na borda direita
+     em vez da esquerda, mantendo a leitura "conectado à margem da tela" */
+  .work-info-tr, .work-info-br{
+    border-left:1px solid rgba(20,20,20,.08);
+    border-right:2px solid var(--info-accent, var(--pla-orange));
+    padding:14px 20px 14px 18px;
+  }
 
-  /* faixa diagonal saindo do canto mais próximo — vive DENTRO da própria
-     área do cartão (inset:0 + border-radius:inherit), então nunca precisa
-     de overflow:hidden no elemento pai e por isso nunca corta o texto,
-     não importa o quão longo o valor seja (ex.: "Profundidade 8cm"). */
-  .work-info::before{
-    content:'';
-    position:absolute;
-    inset:0;
-    z-index:-1;
-    border-radius:inherit;
-    pointer-events:none;
-  }
-  /* usa a mesma --info-accent (cor predominante da imagem em destaque)
-     que já alimenta a linha (.work-info-line) — script.js atualiza essa
-     variável em cada .work-info sempre que o card central muda, então a
-     faixa de fundo passa a acompanhar a cor real da peça em vez de ficar
-     laranja fixo pra tudo. Fallback pro laranja da marca se a variável
-     ainda não tiver sido calculada (ex.: primeiro frame antes do JS). */
-  .work-info-tl::before{ background:linear-gradient(135deg, color-mix(in srgb, var(--info-accent, var(--pla-orange)) 30%, transparent) 0%, color-mix(in srgb, var(--info-accent, var(--pla-orange)) 8%, transparent) 42%, transparent 68%); }
-  .work-info-tr::before{ background:linear-gradient(225deg, color-mix(in srgb, var(--info-accent, var(--pla-orange)) 30%, transparent) 0%, color-mix(in srgb, var(--info-accent, var(--pla-orange)) 8%, transparent) 42%, transparent 68%); }
-  .work-info-bl::before{ background:linear-gradient(45deg,  color-mix(in srgb, var(--info-accent, var(--pla-orange)) 30%, transparent) 0%, color-mix(in srgb, var(--info-accent, var(--pla-orange)) 8%, transparent) 42%, transparent 68%); }
-  .work-info-br::before{ background:linear-gradient(315deg, color-mix(in srgb, var(--info-accent, var(--pla-orange)) 30%, transparent) 0%, color-mix(in srgb, var(--info-accent, var(--pla-orange)) 8%, transparent) 42%, transparent 68%); }
+  /* cada canto entra deslizando desde a borda real da tela mais próxima,
+     reforçando a sensação de "saiu do canto" em vez de só aparecer no lugar */
+  .work-info-tl{ transform:translate(-20px,0) scale(.96); }
+  .work-info-tr{ transform:translate(20px,0) scale(.96); }
+  .work-info-bl{ transform:translate(-20px,0) scale(.96); }
+  .work-info-br{ transform:translate(20px,0) scale(.96); }
+  .work-info.is-visible{ opacity:1; transform:translate(0,0) scale(1); }
 
-  /* linha curta que "percorre e expande" dentro do próprio cartão — nasce
-     com largura 0 centrada e cresce para os dois lados */
-  .work-info-line{
-    display:block;
-    height:2px;
-    width:0;
-    margin:0 0 10px;
-    background:var(--info-accent, var(--pla-orange));
-    transform-origin:center;
-    transition:width .55s cubic-bezier(.16,.8,.24,1), background-color .4s ease;
-  }
-  .work-info-tr .work-info-line,
-  .work-info-br .work-info-line{ margin-left:auto; }
-  .work-info.is-revealing .work-info-line{ width:100%; }
+  /* a linha decorativa interna some — o conector externo já cumpre esse
+     papel; aqui ela vira apenas espaçador invisível pra não quebrar o
+     markup existente caso ainda esteja no HTML */
+  .work-info-line{ display:none; }
 
   .work-info-label{
     display:block;
     font-family:var(--f-mono);
-    font-size:10px;
+    font-size:9px;
     font-weight:600;
     letter-spacing:.14em;
     text-transform:uppercase;
-    color:var(--pla-orange);
-    margin-bottom:6px;
+    color:var(--info-accent, var(--pla-orange));
+    margin-bottom:5px;
+    margin-top:6px;
     opacity:0;
     transform:translateY(8px);
     transition:opacity .5s ease .18s, transform .5s ease .18s;
@@ -656,8 +644,8 @@
     display:block;
     font-family:var(--f-display);
     font-weight:700;
-    font-size:clamp(18px, 1.8vw, 24px);
-    line-height:1.1;
+    font-size:clamp(16px, 1.5vw, 21px);
+    line-height:1.15;
     letter-spacing:-0.02em;
     color:var(--ink);
     text-shadow:
@@ -681,18 +669,16 @@
      e reequilibradas na vertical: material (tr) e peso (br) sobem para não
      ficar atrás da seta/botão fixo de "voltar ao topo" no canto inferior
      direito da tela. */
-  .work-info-tl{ left:3%;  top:11%;    text-align:left; }
-  .work-info-tr{ right:3%; top:9%;     text-align:right; }
-  .work-info-bl{ left:3%;  bottom:19%; text-align:left; }
-  .work-info-br{ right:3%; bottom:24%; text-align:right; }
+  .work-info-tl{ left:2%;  top:10%;    text-align:left; }
+  .work-info-tr{ right:2%; top:8%;     text-align:right; }
+  .work-info-bl{ left:2%;  bottom:18%; text-align:left; }
+  .work-info-br{ right:2%; bottom:23%; text-align:right; }
 
   @media (max-width:1200px){
-    .work-info{ padding:12px 14px; }
-    .work-info-value{ font-size:clamp(16px, 2vw, 20px); }
-    .work-info-tl{ left:1.5%; }
-    .work-info-tr{ right:1.5%; }
-    .work-info-bl{ left:1.5%; }
-    .work-info-br{ right:1.5%; }
+    .work-info{ padding:12px 16px 12px 18px; max-width:190px; }
+    .work-info-value{ font-size:clamp(15px, 2vw, 19px); }
+    .work-info-tl, .work-info-bl{ left:1%; }
+    .work-info-tr, .work-info-br{ right:1%; }
   }
 
   @media (max-width:900px){
