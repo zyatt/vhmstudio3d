@@ -2,48 +2,48 @@
   {
     "id": "01",
     "nome": "Blastoise",
-    "material": "Filamento PETG resistente a impacto",
-    "medidas": "altura 9cm | largura 7cm | profundidade 6cm",
+    "material": "PETG",
+    "medidas": ["Altura 9cm", "Largura 7cm", "Profundidade 6cm"],
     "peso": "62g",
     "fabricacao": "Impresso com tecnologia de impressão 3D"
   },
   {
     "id": "02",
     "nome": "Patolino",
-    "material": "Plástico ABS de alta durabilidade",
-    "medidas": "altura 11cm | largura 5cm | profundidade 4cm",
+    "material": "ABS",
+    "medidas": ["Altura 11cm", "Largura 5cm", "Profundidade 4cm"],
     "peso": "44g",
     "fabricacao": "Impresso com tecnologia de impressão 3D"
   },
   {
     "id": "03",
     "nome": "Suporte de controle",
-    "material": "Filamento PETG resistente a impacto",
-    "medidas": "altura 10cm | largura 12cm | profundidade 8cm",
+    "material": "PETG",
+    "medidas": ["Altura 10cm", "Largura 12cm", "Profundidade 8cm"],
     "peso": "58g",
     "fabricacao": "Impresso com tecnologia de impressão 3D"
   },
   {
     "id": "04",
     "nome": "Levantador de peso",
-    "material": "Plástico PLA ecológico e seguro",
-    "medidas": "altura 8cm | largura 5cm | profundidade 4cm",
+    "material": "PLA",
+    "medidas": ["Altura 8cm", "Largura 5cm", "Profundidade 4cm"],
     "peso": "35g",
     "fabricacao": "Impresso com tecnologia de impressão 3D"
   },
   {
     "id": "05",
     "nome": "Polvo articulado",
-    "material": "Plástico PLA ecológico e seguro",
-    "medidas": "altura 4cm | largura 12cm | profundidade 6cm",
+    "material": "PLA",
+    "medidas": ["Altura 4cm", "Largura 12cm", "Profundidade 6cm"],
     "peso": "48g",
     "fabricacao": "Impresso com tecnologia de impressão 3D"
   },
   {
     "id": "06",
     "nome": "Capivara de pelúcia",
-    "material": "Plástico PLA ecológico e seguro",
-    "medidas": "altura 5cm | largura 4cm | profundidade 4cm",
+    "material": "PLA",
+    "medidas": ["Altura 5cm", "Largura 4cm", "Profundidade 4cm"],
     "peso": "22g",
     "fabricacao": "Impresso com tecnologia de impressão 3D"
   }

@@ -60,6 +60,66 @@ document.addEventListener('DOMContentLoaded', () => {
   updateProgress();
 
   /* =========================================================
+     2.1) MENU HAMBURGER (mobile)
+     ========================================================= */
+  const navBurger = document.getElementById('nav-burger');
+  const navMobileMenu = document.getElementById('nav-mobile-menu');
+  if (navBurger && navMobileMenu) {
+    function closeMobileMenu() {
+      navBurger.setAttribute('aria-expanded', 'false');
+      navMobileMenu.classList.remove('is-open');
+      navMobileMenu.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('nav-open');
+    }
+    function openMobileMenu() {
+      navBurger.setAttribute('aria-expanded', 'true');
+      navMobileMenu.classList.add('is-open');
+      navMobileMenu.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('nav-open');
+    }
+    navBurger.addEventListener('click', () => {
+      const isOpen = navBurger.getAttribute('aria-expanded') === 'true';
+      isOpen ? closeMobileMenu() : openMobileMenu();
+    });
+    // fecha o menu ao clicar em qualquer link dele (o scroll já é
+    // tratado pelo listener genérico de a[href^="#"] acima)
+    navMobileMenu.querySelectorAll('a').forEach((a) => {
+      a.addEventListener('click', closeMobileMenu);
+    });
+    // fecha com Esc, por acessibilidade
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeMobileMenu();
+    });
+  }
+
+  /* =========================================================
+     2.2) BOTÃO VOLTAR AO TOPO — some no início da página, aparece
+     depois de rolar um pouco, sempre acima do balão do WhatsApp.
+     ========================================================= */
+  const scrollTopBtn = document.getElementById('scroll-top-btn');
+  if (scrollTopBtn) {
+    let btnVisible = false;
+    function tickScrollTopBtn() {
+      // Lê sempre window.scrollY: é o valor real da posição da página,
+      // continua correto mesmo durante a animação do Lenis (que também
+      // move o scroll nativo) e evita duas fontes de verdade brigando
+      // entre si quando a página rola rápido ou volta ao topo.
+      const shouldShow = window.scrollY > window.innerHeight * 0.5;
+      if (shouldShow !== btnVisible) {
+        btnVisible = shouldShow;
+        scrollTopBtn.classList.toggle('is-visible', btnVisible);
+      }
+      requestAnimationFrame(tickScrollTopBtn);
+    }
+    requestAnimationFrame(tickScrollTopBtn);
+
+    scrollTopBtn.addEventListener('click', () => {
+      if (lenis) lenis.scrollTo(0, { duration: 1.3 });
+      else window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
+  /* =========================================================
      3) GSAP — registra plugin e roda as animações
      ========================================================= */
   if (typeof gsap !== 'undefined') {
@@ -302,6 +362,15 @@ document.addEventListener('DOMContentLoaded', () => {
       return `rgb(${soften(r)}, ${soften(g)}, ${soften(b)})`;
     }
 
+    // Escurece levemente a cor dominante quando ela é clara demais, pra a
+    // linha (.work-info-line) continuar visível sobre o fundo claro da seção.
+    function accentVariant(r, g, b) {
+      const luma = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      if (luma <= 0.72) return `rgb(${r}, ${g}, ${b})`;
+      const darken = (c) => Math.round(c * 0.72);
+      return `rgb(${darken(r)}, ${darken(g)}, ${darken(b)})`;
+    }
+
     function updateWorkBg(cardId) {
       const c = dominantColors[cardId];
       if (!c || !workBg) return;
@@ -310,6 +379,16 @@ document.addEventListener('DOMContentLoaded', () => {
       workBg.style.setProperty('--work-bg-c1', pastelVariant(c.r, c.g, c.b, 0.35));
       workBg.style.setProperty('--work-bg-c2', pastelVariant(c.r, c.g, c.b, 0.55));
       workBg.style.setProperty('--work-bg-c3', pastelVariant(c.r, c.g, c.b, 0.45));
+
+      // A linha decorativa acima de Peça/Material/Medidas/Peso passa a usar
+      // a mesma cor dominante da imagem em destaque, em vez do laranja fixo.
+      // Consulta o DOM diretamente (em vez de reusar a variável infoBoxes,
+      // declarada mais abaixo neste arquivo) para não depender da ordem de
+      // execução entre a amostragem assíncrona da imagem e essa declaração.
+      const accent = accentVariant(c.r, c.g, c.b);
+      document.querySelectorAll('.work-info').forEach((box) => {
+        box.style.setProperty('--info-accent', accent);
+      });
     }
 
     function applyDominantColor(card) {
@@ -378,7 +457,25 @@ document.addEventListener('DOMContentLoaded', () => {
       if (workSection) bgObs.observe(workSection);
     }
 
-    // ---- Textos flutuantes com dados da peça central (via JSON) ----
+    // Formata as medidas em uma linha por medida, sem separador "|":
+    // Altura 9cm
+    // Largura 7cm
+    // Profundidade 6cm
+    // Aceita o formato novo (array: ["Altura 9cm", "Largura 7cm", ...])
+    // e mantém compatibilidade com o formato antigo (string "altura 9cm | largura 7cm | ...").
+    function formatMedidas(data) {
+      if (!data) return '—';
+      const parts = Array.isArray(data)
+        ? data.map((p) => String(p).trim()).filter(Boolean)
+        : String(data).split('|').map((p) => p.trim()).filter(Boolean);
+      if (!parts.length) return '—';
+      return parts
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .map((part) => `<span class="work-info-measure-line">${part}</span>`)
+        .join('');
+    }
+
+    // ---- Textos com dados da peça central (via JSON) ----
     let piecesData = null;
     let lastInfoIdx = null;
     const infoEls = {
@@ -424,15 +521,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (infoEls.nome) infoEls.nome.textContent = piece.nome || '—';
       if (infoEls.material) infoEls.material.textContent = piece.material || '—';
-      if (infoEls.medidas) infoEls.medidas.textContent = piece.medidas || '—';
+      if (infoEls.medidas) infoEls.medidas.innerHTML = formatMedidas(piece.medidas);
       if (infoEls.peso) infoEls.peso.textContent = piece.peso || '—';
 
       if (mobileInfoEls.nome) mobileInfoEls.nome.textContent = piece.nome || '—';
       if (mobileInfoEls.material) mobileInfoEls.material.textContent = piece.material || '—';
-      if (mobileInfoEls.medidas) mobileInfoEls.medidas.textContent = piece.medidas || '—';
+      if (mobileInfoEls.medidas) mobileInfoEls.medidas.innerHTML = formatMedidas(piece.medidas);
       if (mobileInfoEls.peso) mobileInfoEls.peso.textContent = piece.peso || '—';
 
       infoBoxes.forEach((box) => box.classList.add('is-visible'));
+
+      // Reinicia a animação da linha + textos a cada troca de card: remove
+      // a classe, força reflow (lê offsetWidth) e reaplica, para que a
+      // transição de width/opacity comece do zero em vez de "pular" direto
+      // pro estado final quando o card muda rápido.
+      infoBoxes.forEach((box) => box.classList.remove('is-revealing'));
+      void infoBoxes[0]?.offsetWidth;
+      requestAnimationFrame(() => {
+        infoBoxes.forEach((box) => box.classList.add('is-revealing'));
+      });
     }
 
     // Configuração visual do "leque": deslocamento horizontal, rotação
@@ -448,7 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let SLOT_W = getSlotW();
     window.addEventListener('resize', () => { SLOT_W = getSlotW(); }, { passive: true });
     const ROT_STEP = 10;     // graus de rotação por slot
-    const SCALE_STEP = 0.14; // redução de escala por slot
+    const SCALE_STEP = 0.24; // redução de escala por slot (cards vizinhos bem menores que o central)
     const OPACITY_STEP = 0.35;
     const MAX_VISIBLE_DIST = 3; // além disso, fica invisível
     const CENTER_POP_Z = 140;   // px que o card central "salta" pra frente (translateZ)
@@ -627,5 +734,72 @@ document.addEventListener('DOMContentLoaded', () => {
 
     render();
   }
+
+  // =========================================================
+  // VIDEOS — troca de vídeo em destaque + botão de som + pausa
+  // fora da viewport (economiza recursos com autoplay em loop)
+  // =========================================================
+  (function initVideos() {
+    const stage = document.getElementById('video-stage');
+    const mainVideo = document.getElementById('video-main');
+    const mainTitle = document.getElementById('video-main-title');
+    const mainTag = document.getElementById('video-main-tag');
+    const soundBtn = document.getElementById('video-sound-btn');
+    const soundIcon = document.getElementById('video-sound-icon');
+    const thumbs = Array.from(document.querySelectorAll('.video-thumb'));
+    if (!stage || !mainVideo || !thumbs.length) return;
+
+    const ICON_MUTED = '<path d="M11 5 6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>';
+    const ICON_UNMUTED = '<path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>';
+
+    function selectThumb(thumb, { restart } = { restart: true }) {
+      thumbs.forEach((t) => t.classList.toggle('is-active', t === thumb));
+      const src = thumb.dataset.src;
+      const poster = thumb.dataset.poster || '';
+      if (mainVideo.getAttribute('src') !== src) {
+        mainVideo.setAttribute('src', src);
+        if (poster) mainVideo.setAttribute('poster', poster);
+        if (restart) {
+          mainVideo.currentTime = 0;
+          mainVideo.play().catch(() => {});
+        }
+      }
+      if (mainTitle) mainTitle.textContent = thumb.dataset.title || '';
+      if (mainTag) mainTag.textContent = thumb.dataset.tag || '';
+    }
+
+    thumbs.forEach((thumb) => {
+      thumb.addEventListener('click', () => selectThumb(thumb));
+    });
+
+    // Botão liga/desliga o áudio do vídeo em destaque. Fica mudo por
+    // padrão (autoplay só funciona em navegadores com muted=true).
+    if (soundBtn) {
+      soundBtn.addEventListener('click', () => {
+        const nextMuted = !mainVideo.muted;
+        mainVideo.muted = nextMuted;
+        if (!nextMuted) mainVideo.play().catch(() => {});
+        soundBtn.setAttribute('aria-pressed', String(!nextMuted));
+        soundBtn.setAttribute('aria-label', nextMuted ? 'Ativar som' : 'Silenciar');
+        if (soundIcon) soundIcon.innerHTML = nextMuted ? ICON_MUTED : ICON_UNMUTED;
+      });
+    }
+
+    // Pausa o vídeo em destaque quando a seção sai da tela — evita
+    // manter um <video> em loop rodando fora da viewport sem necessidade.
+    if ('IntersectionObserver' in window) {
+      const section = document.getElementById('videos');
+      const obs = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            mainVideo.play().catch(() => {});
+          } else {
+            mainVideo.pause();
+          }
+        });
+      }, { threshold: 0.15 });
+      if (section) obs.observe(section);
+    }
+  })();
 
 });
