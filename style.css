@@ -104,14 +104,19 @@
     height:145px;
     z-index:499;
     opacity:0;
-    transition:opacity .6s cubic-bezier(.22,.61,.36,1);
+    /* entrada rápida: feedback imediato assim que o usuário começa a rolar */
+    transition:opacity .18s ease-out;
     pointer-events:none;
   }
   #nav-wave path{
     fill:#000000;
     fill-opacity:.95;
   }
-  #nav-wave.is-visible{ opacity:1; }
+  #nav-wave.is-visible{
+    opacity:1;
+    /* saída um pouco mais suave: evita "piscar" ao voltar rápido pro topo */
+    transition:opacity .35s ease-in;
+  }
   /* em mobile a onda mantém a mesma altura do desktop — reduzi-la
      distorcia demais as curvas (o SVG estica livremente com
      preserveAspectRatio="none", e uma altura menor comprimia a onda até
@@ -154,7 +159,28 @@
     white-space:nowrap;
   }
   .nav-social:hover{ opacity:1; }
-  .nav-social svg{ width:16px; height:16px; flex-shrink:0; }
+  body.nav-solid .nav-social{ opacity:1; }
+  .nav-social svg{
+    width:16px; height:16px; flex-shrink:0;
+    transition:transform .35s cubic-bezier(.34,1.56,.64,1);
+  }
+  .nav-social:hover svg{ transform:scale(1.15) rotate(-8deg); }
+  .nav-social-text{ position:relative; }
+  .nav-social-text::after{
+    content:'';
+    position:absolute;
+    left:0; bottom:-2px;
+    width:100%;
+    height:1px;
+    background:currentColor;
+    transform:scaleX(0);
+    transform-origin:right;
+    transition:transform .35s cubic-bezier(.22,.61,.36,1);
+  }
+  .nav-social:hover .nav-social-text::after{
+    transform:scaleX(1);
+    transform-origin:left;
+  }
   .nav-social-handle{ font-weight:400; }
   /* em telas médias/pequenas some só a palavra "Siga-nos", mantendo o
      @handle sempre visível ao lado do ícone */
@@ -171,8 +197,32 @@
     letter-spacing:0.08em;
     text-transform:uppercase;
   }
-  .nav-links a{opacity:.82; transition:opacity .25s;}
+  .nav-links a{
+    position:relative;
+    opacity:.82;
+    padding-bottom:3px;
+    transition:opacity .25s;
+  }
+  .nav-links a::after{
+    content:'';
+    position:absolute;
+    left:0; bottom:0;
+    width:100%;
+    height:1px;
+    background:currentColor;
+    transform:scaleX(0);
+    transform-origin:right;
+    transition:transform .35s cubic-bezier(.22,.61,.36,1);
+  }
   .nav-links a:hover{opacity:1;}
+  .nav-links a:hover::after{
+    transform:scaleX(1);
+    transform-origin:left;
+  }
+  /* com o fundo preto da nav visível, opacity<1 no texto (branco)
+     faz o mix-blend-mode:difference resultar em cinza em vez de
+     branco puro — força opacidade total nesse estado */
+  body.nav-solid .nav-links a{ opacity:1; }
   @media (max-width:767px){ .nav-links{display:none;} }
 
   /* ---- Botão hamburger (só aparece em mobile) ---- */

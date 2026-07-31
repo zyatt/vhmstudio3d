@@ -74,6 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (visible === navWaveVisible) return;
     navWaveVisible = visible;
     navWave.classList.toggle('is-visible', navWaveVisible);
+    document.body.classList.toggle('nav-solid', navWaveVisible);
   }
   function applyNavWaveState() {
     navWaveTicking = false;
