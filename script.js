@@ -17,6 +17,10 @@ document.addEventListener('DOMContentLoaded', () => {
       smoothWheel: true,
       wheelMultiplier: 1,
       touchMultiplier: 1.4,
+      // não intercepta o scroll quando o wheel/touch acontece dentro de um
+      // dropdown do combo estado/cidade — assim ele rola sozinho, sem
+      // mover a página, não importa onde o cursor esteja depois
+      prevent: (node) => !!(node && node.closest && node.closest('.combo-list')),
     });
     window.lenis = lenis;
     function raf(time) {
@@ -60,6 +64,47 @@ document.addEventListener('DOMContentLoaded', () => {
   updateProgress();
 
   /* =========================================================
+     2b) NAV: mostra o fundo em onda ao rolar a página
+     ========================================================= */
+  const navWave = document.getElementById('nav-wave');
+  let navWaveVisible = null; // estado atual conhecido (null força a 1ª sincronização)
+  let navWaveTicking = false;
+  let navWaveHideTimer = null;
+  function setNavWave(visible) {
+    if (visible === navWaveVisible) return;
+    navWaveVisible = visible;
+    navWave.classList.toggle('is-visible', navWaveVisible);
+  }
+  function applyNavWaveState() {
+    navWaveTicking = false;
+    const scrollY = lenis ? lenis.scroll : window.scrollY;
+    if (scrollY > 0) {
+      // qualquer scroll fora do topo cancela um "desligar" pendente e liga
+      // a nav preta imediatamente
+      if (navWaveHideTimer) { clearTimeout(navWaveHideTimer); navWaveHideTimer = null; }
+      setNavWave(true);
+    } else if (!navWaveHideTimer) {
+      // só volta a ficar transparente depois de confirmar, por um pequeno
+      // instante, que o scroll realmente parou em 0 — o smooth-scroll
+      // (Lenis) passa por valores próximos de 0 durante a desaceleração,
+      // e sem esse pequeno atraso a nav "piscava" entre preto e transparente
+      navWaveHideTimer = setTimeout(() => {
+        navWaveHideTimer = null;
+        const stillAtTop = (lenis ? lenis.scroll : window.scrollY) <= 0;
+        if (stillAtTop) setNavWave(false);
+      }, 120);
+    }
+  }
+  function updateNavScrolled() {
+    if (navWaveTicking) return;
+    navWaveTicking = true;
+    requestAnimationFrame(applyNavWaveState);
+  }
+  window.addEventListener('scroll', updateNavScrolled, { passive: true });
+  if (lenis) lenis.on('scroll', updateNavScrolled);
+  updateNavScrolled();
+
+  /* =========================================================
      2.1) MENU HAMBURGER (mobile)
      ========================================================= */
   const navBurger = document.getElementById('nav-burger');
@@ -69,15 +114,14 @@ document.addEventListener('DOMContentLoaded', () => {
       navBurger.setAttribute('aria-expanded', 'false');
       navMobileMenu.classList.remove('is-open');
       navMobileMenu.setAttribute('aria-hidden', 'true');
-      document.body.classList.remove('nav-open');
     }
     function openMobileMenu() {
       navBurger.setAttribute('aria-expanded', 'true');
       navMobileMenu.classList.add('is-open');
       navMobileMenu.setAttribute('aria-hidden', 'false');
-      document.body.classList.add('nav-open');
     }
-    navBurger.addEventListener('click', () => {
+    navBurger.addEventListener('click', (e) => {
+      e.stopPropagation();
       const isOpen = navBurger.getAttribute('aria-expanded') === 'true';
       isOpen ? closeMobileMenu() : openMobileMenu();
     });
@@ -85,6 +129,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // tratado pelo listener genérico de a[href^="#"] acima)
     navMobileMenu.querySelectorAll('a').forEach((a) => {
       a.addEventListener('click', closeMobileMenu);
+    });
+    // dropdown pequeno: fecha ao clicar fora dele (comportamento padrão
+    // de dropdown, diferente do antigo painel de tela cheia)
+    document.addEventListener('click', (e) => {
+      const isOpen = navBurger.getAttribute('aria-expanded') === 'true';
+      if (isOpen && !navMobileMenu.contains(e.target)) closeMobileMenu();
     });
     // fecha com Esc, por acessibilidade
     document.addEventListener('keydown', (e) => {
@@ -135,8 +185,8 @@ document.addEventListener('DOMContentLoaded', () => {
         ease: 'power4.out'
       })
       .to('.hero-sub', { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out' }, '-=0.5')
-      .to('.spec', { opacity: 1, y: 0, duration: 0.6, stagger: 0.08, ease: 'power3.out' }, '-=0.45')
-      .to('.hero-cta', { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }, '-=0.4');
+      .to('.hero-cta', { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }, '-=0.4')
+      .to('.hero-ml-float', { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }, '-=0.3');
 
     /* ---- Reveal genérico por scroll: qualquer .reveal-wrap > .reveal-inner ---- */
     document.querySelectorAll('.reveal-wrap').forEach((wrap) => {
@@ -355,7 +405,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // A mesma cor também alimenta o fundo animado da seção (work-bg), que
     // é atualizado sempre que o card central muda (ver updateWorkBg abaixo).
     const dominantColors = {}; // cardId -> { r, g, b }
-    const workBg = document.querySelector('.work-bg');
 
     function pastelVariant(r, g, b, mix) {
       const soften = (c) => Math.round(c + (255 - c) * mix);
@@ -371,14 +420,16 @@ document.addEventListener('DOMContentLoaded', () => {
       return `rgb(${darken(r)}, ${darken(g)}, ${darken(b)})`;
     }
 
+    const workSection = document.getElementById('work');
+
     function updateWorkBg(cardId) {
       const c = dominantColors[cardId];
-      if (!c || !workBg) return;
-      // Três tons pastel derivados da mesma cor dominante, com mix diferente
-      // pra dar variação sutil entre os blobs sem parecer 3 cores soltas.
-      workBg.style.setProperty('--work-bg-c1', pastelVariant(c.r, c.g, c.b, 0.35));
-      workBg.style.setProperty('--work-bg-c2', pastelVariant(c.r, c.g, c.b, 0.55));
-      workBg.style.setProperty('--work-bg-c3', pastelVariant(c.r, c.g, c.b, 0.45));
+      if (!c) return;
+      // Cor pastel bem clara derivada da cor dominante da imagem em destaque,
+      // aplicada como fundo sólido da seção (sem blobs nem luzes animadas).
+      if (workSection) {
+        workSection.style.setProperty('--work-bg-c1', pastelVariant(c.r, c.g, c.b, 0.82));
+      }
 
       // A linha decorativa acima de Peça/Material/Medidas/Peso passa a usar
       // a mesma cor dominante da imagem em destaque, em vez do laranja fixo.
@@ -447,20 +498,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     cards.forEach(applyDominantColor);
-
-    // ---- Pausa os blobs animados do fundo quando a seção não está visível ----
-    // .work-bg span roda animation:infinite com blur(60px); sem pausar,
-    // o navegador continua recalculando isso o tempo todo, mesmo com a
-    // seção fora da tela, pesando no scroll da página inteira.
-    if (workBg && 'IntersectionObserver' in window) {
-      const workSection = document.getElementById('work');
-      const bgObs = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          workBg.classList.toggle('is-paused', !entry.isIntersecting);
-        });
-      }, { threshold: 0.01 });
-      if (workSection) bgObs.observe(workSection);
-    }
 
     // Formata as medidas em uma linha por medida, sem separador "|":
     // Altura 9cm
@@ -559,7 +596,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const w = window.innerWidth;
       if (w <= 600) return 170;
       if (w <= 900) return 230;
-      return 300;
+      return 350;
     }
     let SLOT_W = getSlotW();
     window.addEventListener('resize', () => { SLOT_W = getSlotW(); }, { passive: true });
@@ -580,9 +617,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // media queries do CSS.
     function getImgScales() {
       const w = window.innerWidth;
-      if (w <= 420) return { center: 1.05, side: 0.8 };
-      if (w <= 700) return { center: 1.15, side: 0.8 };
-      return { center: 1.25, side: 0.92 };
+      if (w <= 420) return { center: 1.05, side: 0.95 };
+      if (w <= 700) return { center: 1.15, side: 0.98 };
+      return { center: 1.25, side: 1.02 };
     }
     let imgScales = getImgScales();
     window.addEventListener('resize', () => { imgScales = getImgScales(); }, { passive: true });
@@ -672,11 +709,19 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Anima suavemente de um valor "active" para outro (usado ao soltar o drag ou clicar)
+    // Anima suavemente de um valor "active" para outro (usado ao soltar o drag ou clicar).
+    // Enquanto o tween está rodando, isAnimating fica true e bloqueia novos
+    // cliques/drags — o card central precisa terminar de chegar ao centro
+    // antes de aceitar a próxima navegação. Isso evita o "travamento" visual
+    // de interromper a animação no meio do caminho repetidamente.
     let tweenState = { v: 0 };
+    let isAnimating = false;
+
     function animateTo(target) {
+      if (isAnimating) return;
       tweenState.v = active;
       if (window.gsap) {
+        isAnimating = true;
         gsap.killTweensOf(tweenState);
         gsap.to(tweenState, {
           v: target,
@@ -689,6 +734,7 @@ document.addEventListener('DOMContentLoaded', () => {
           onComplete: () => {
             active = ((Math.round(target) % N) + N) % N;
             render();
+            isAnimating = false;
           }
         });
       } else {
@@ -700,6 +746,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let downTarget = [];
 
     function onPointerDown(e) {
+      // Bloqueia início de um novo drag/clique enquanto o card central
+      // ainda está em movimento até completar a posição.
+      if (isAnimating) return;
       dragging = true;
       moved = false;
       pointerId = e.pointerId;
@@ -715,7 +764,6 @@ document.addEventListener('DOMContentLoaded', () => {
       stage.setPointerCapture(pointerId);
       startX = e.clientX;
       startActive = active;
-      if (window.gsap) gsap.killTweensOf(tweenState);
       if (window.lenis) window.lenis.stop();
     }
 
@@ -793,8 +841,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =========================================================
-  // VIDEOS — troca de vídeo em destaque + botão de som + pausa
-  // fora da viewport (economiza recursos com autoplay em loop)
+  // VIDEOS — troca de vídeo em destaque + som + play/pause +
+  // barra de progresso (estilo YouTube) + pausa automática quando
+  // a seção sai da tela ou a aba perde o foco
   // =========================================================
   (function initVideos() {
     const stage = document.getElementById('video-stage');
@@ -803,22 +852,145 @@ document.addEventListener('DOMContentLoaded', () => {
     const mainTag = document.getElementById('video-main-tag');
     const soundBtn = document.getElementById('video-sound-btn');
     const soundIcon = document.getElementById('video-sound-icon');
+    const timeLabel = document.getElementById('video-time');
+    const progressBar = document.getElementById('video-progress-bar');
+    const progressTrack = progressBar ? progressBar.querySelector('.video-progress-track') : null;
+    const progressFilled = document.getElementById('video-progress-filled');
+    const progressBuffered = document.getElementById('video-progress-buffered');
+    const progressThumb = document.getElementById('video-progress-thumb');
     const thumbs = Array.from(document.querySelectorAll('.video-thumb'));
+    const centerIcon = document.getElementById('video-center-icon');
+    const centerIconSvg = document.getElementById('video-center-icon-svg');
     if (!stage || !mainVideo || !thumbs.length) return;
 
     const ICON_MUTED = '<path d="M11 5 6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>';
     const ICON_UNMUTED = '<path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>';
+    const ICON_CENTER_PAUSE = '<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>';
+    const ICON_CENTER_PLAY = '<path d="M8 5v14l11-7z"/>';
+    let centerIconTimer = null;
+    // mostra o ícone de play/pause no centro do vídeo por um instante,
+    // como feedback do clique — depois desaparece sozinho
+    function flashCenterIcon(paused) {
+      if (!centerIcon || !centerIconSvg) return;
+      centerIconSvg.innerHTML = paused ? ICON_CENTER_PLAY : ICON_CENTER_PAUSE;
+      centerIcon.classList.remove('is-flashing');
+      // força reflow para reiniciar a transição caso já estivesse visível
+      void centerIcon.offsetWidth;
+      centerIcon.classList.add('is-flashing');
+      if (centerIconTimer) clearTimeout(centerIconTimer);
+      centerIconTimer = setTimeout(() => {
+        centerIcon.classList.remove('is-flashing');
+      }, 550);
+    }
+
+    // Controla se o usuário pausou manualmente — nesse caso o vídeo não
+    // deve voltar a tocar sozinho ao reentrar na viewport/aba.
+    let userPaused = false;
+    let inViewport = false;
+    let pageVisible = document.visibilityState !== 'hidden';
+    let isDragging = false;
+
+    function fmtTime(sec) {
+      if (!isFinite(sec) || sec < 0) sec = 0;
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    function attemptPlay() {
+      if (userPaused || !inViewport || !pageVisible) return;
+      mainVideo.play().catch(() => {});
+    }
+
+    function forcePause() {
+      mainVideo.pause();
+    }
+
+    function updateProgress() {
+      if (isDragging) return;
+      const duration = mainVideo.duration || 0;
+      const pct = duration ? (mainVideo.currentTime / duration) * 100 : 0;
+      if (progressFilled) progressFilled.style.width = pct + '%';
+      if (progressThumb) progressThumb.style.left = pct + '%';
+      if (timeLabel) timeLabel.textContent = `${fmtTime(mainVideo.currentTime)} / ${fmtTime(duration)}`;
+      if (progressBuffered && mainVideo.buffered.length) {
+        try {
+          const bufferedEnd = mainVideo.buffered.end(mainVideo.buffered.length - 1);
+          const bufPct = duration ? (bufferedEnd / duration) * 100 : 0;
+          progressBuffered.style.width = bufPct + '%';
+        } catch (e) { /* ignora se não houver ranges válidos */ }
+      }
+    }
+
+    function seekFromClientX(clientX) {
+      if (!progressBar) return;
+      // Usa o retângulo da TRILHA (.video-progress-track), não do wrapper
+      // clicável (.video-progress-bar) — o wrapper tem padding extra pra
+      // aumentar a área de clique, e usar o rect dele fazia o clique na
+      // borda esquerda/direita calcular uma posição errada (deslocada).
+      const rect = (progressTrack || progressBar).getBoundingClientRect();
+      const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+      const duration = mainVideo.duration || 0;
+      if (duration) mainVideo.currentTime = ratio * duration;
+      if (progressFilled) progressFilled.style.width = (ratio * 100) + '%';
+      if (progressThumb) progressThumb.style.left = (ratio * 100) + '%';
+    }
+
+    mainVideo.addEventListener('timeupdate', updateProgress);
+    mainVideo.addEventListener('loadedmetadata', updateProgress);
+    mainVideo.addEventListener('progress', updateProgress);
+    // Ao terminar, avança automaticamente para o próximo vídeo da lista
+    // (volta ao primeiro depois do último).
+    mainVideo.addEventListener('ended', () => {
+      const activeIndex = thumbs.findIndex((t) => t.classList.contains('is-active'));
+      const nextIndex = activeIndex >= 0 ? (activeIndex + 1) % thumbs.length : 0;
+      selectThumb(thumbs[nextIndex]);
+    });
+
+    // Barra de progresso: clique para pular, arraste para "scrubar"
+    if (progressBar) {
+      progressBar.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        isDragging = true;
+        progressBar.classList.add('is-dragging');
+        seekFromClientX(e.clientX);
+      });
+      progressBar.addEventListener('touchstart', (e) => {
+        isDragging = true;
+        progressBar.classList.add('is-dragging');
+        seekFromClientX(e.touches[0].clientX);
+      }, { passive: true });
+
+      window.addEventListener('mousemove', (e) => {
+        if (isDragging) seekFromClientX(e.clientX);
+      });
+      window.addEventListener('touchmove', (e) => {
+        if (isDragging) seekFromClientX(e.touches[0].clientX);
+      }, { passive: true });
+
+      window.addEventListener('mouseup', () => {
+        if (isDragging) {
+          isDragging = false;
+          progressBar.classList.remove('is-dragging');
+        }
+      });
+      window.addEventListener('touchend', () => {
+        if (isDragging) {
+          isDragging = false;
+          progressBar.classList.remove('is-dragging');
+        }
+      });
+    }
 
     function selectThumb(thumb, { restart } = { restart: true }) {
       thumbs.forEach((t) => t.classList.toggle('is-active', t === thumb));
       const src = thumb.dataset.src;
-      const poster = thumb.dataset.poster || '';
       if (mainVideo.getAttribute('src') !== src) {
         mainVideo.setAttribute('src', src);
-        if (poster) mainVideo.setAttribute('poster', poster);
         if (restart) {
           mainVideo.currentTime = 0;
-          mainVideo.play().catch(() => {});
+          userPaused = false;
+          attemptPlay();
         }
       }
       if (mainTitle) mainTitle.textContent = thumb.dataset.title || '';
@@ -829,34 +1001,432 @@ document.addEventListener('DOMContentLoaded', () => {
       thumb.addEventListener('click', () => selectThumb(thumb));
     });
 
+    // Miniaturas: força o carregamento do primeiro frame de cada vídeo
+    // para servir de "capa" (thumbnail), já que não usamos mais poster.jpg
+    document.querySelectorAll('.video-thumb-frame video').forEach((v) => {
+      v.addEventListener('loadeddata', () => { v.currentTime = 0.1; }, { once: true });
+    });
+
     // Botão liga/desliga o áudio do vídeo em destaque. Fica mudo por
     // padrão (autoplay só funciona em navegadores com muted=true).
     if (soundBtn) {
       soundBtn.addEventListener('click', () => {
         const nextMuted = !mainVideo.muted;
         mainVideo.muted = nextMuted;
-        if (!nextMuted) mainVideo.play().catch(() => {});
+        if (!nextMuted) attemptPlay();
         soundBtn.setAttribute('aria-pressed', String(!nextMuted));
         soundBtn.setAttribute('aria-label', nextMuted ? 'Ativar som' : 'Silenciar');
         if (soundIcon) soundIcon.innerHTML = nextMuted ? ICON_MUTED : ICON_UNMUTED;
       });
     }
 
-    // Pausa o vídeo em destaque quando a seção sai da tela — evita
-    // manter um <video> em loop rodando fora da viewport sem necessidade.
+    // Clique no próprio vídeo pausa/retoma — substitui o antigo botão de
+    // play/pause fixo. Se o usuário pausar manualmente, o vídeo permanece
+    // pausado mesmo que a seção continue visível.
+    mainVideo.addEventListener('click', () => {
+      if (mainVideo.paused) {
+        userPaused = false;
+        attemptPlay();
+        flashCenterIcon(false); // ícone de pause: acabou de dar play
+      } else {
+        userPaused = true;
+        forcePause();
+        flashCenterIcon(true); // ícone de play: acabou de pausar
+      }
+    });
+
+    updateProgress();
+
+    // Pausa o vídeo em destaque quando a seção sai da tela — evita manter
+    // um <video> rodando fora da viewport sem necessidade. Considera a
+    // seção "fora de vista" com uma margem generosa, funcionando mesmo em
+    // seções mais altas que a viewport (o threshold sozinho não bastava).
     if ('IntersectionObserver' in window) {
       const section = document.getElementById('videos');
       const obs = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            mainVideo.play().catch(() => {});
+          inViewport = entry.isIntersecting;
+          if (inViewport) {
+            attemptPlay();
           } else {
-            mainVideo.pause();
+            forcePause();
           }
         });
-      }, { threshold: 0.15 });
+      }, { threshold: 0, rootMargin: '-10% 0px -10% 0px' });
       if (section) obs.observe(section);
+    } else {
+      // Sem suporte a IntersectionObserver: assume visível e deixa o
+      // autoplay padrão do navegador decidir.
+      inViewport = true;
     }
+
+    // Pausa também quando o usuário troca de aba/minimiza a janela, e
+    // retoma ao voltar (se ainda estiver na seção e não pausado manualmente).
+    document.addEventListener('visibilitychange', () => {
+      pageVisible = document.visibilityState !== 'hidden';
+      if (pageVisible) {
+        attemptPlay();
+      } else {
+        forcePause();
+      }
+    });
+  })();
+
+  // =========================================================
+  // FORMULÁRIO DE CONTATO — máscara de celular + combo
+  // inteligente de estado/cidade (digitar ou escolher na lista,
+  // cidades filtradas pelo estado selecionado)
+  // =========================================================
+  (function initContactForm() {
+    const form = document.getElementById('contact-form');
+    if (!form) return;
+
+    // ---- dados de estados/cidades via API do IBGE, com fallback
+    //      mínimo (apenas nomes dos estados) caso a API esteja
+    //      indisponível — nesse caso as cidades ficam em texto livre ----
+    const IBGE_STATES_URL = 'https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome';
+    const IBGE_CITIES_URL = (uf) => `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios?orderBy=nome`;
+
+    const FALLBACK_STATE_NAMES = [
+      'Acre', 'Alagoas', 'Amapá', 'Amazonas', 'Bahia', 'Ceará', 'Distrito Federal',
+      'Espírito Santo', 'Goiás', 'Maranhão', 'Mato Grosso', 'Mato Grosso do Sul',
+      'Minas Gerais', 'Pará', 'Paraíba', 'Paraná', 'Pernambuco', 'Piauí',
+      'Rio de Janeiro', 'Rio Grande do Norte', 'Rio Grande do Sul', 'Rondônia',
+      'Roraima', 'Santa Catarina', 'São Paulo', 'Sergipe', 'Tocantins'
+    ];
+
+    let STATE_NAMES = FALLBACK_STATE_NAMES;
+    let STATE_UF_BY_NAME = {};   // "São Paulo" -> "SP"
+    const CITY_CACHE = {};       // "SP" -> ["Adamantina", ...]
+
+    async function loadStates() {
+      try {
+        const res = await fetch(IBGE_STATES_URL);
+        if (!res.ok) throw new Error('IBGE states request failed');
+        const data = await res.json();
+        const names = [];
+        const ufMap = {};
+        data.forEach((uf) => {
+          names.push(uf.nome);
+          ufMap[uf.nome] = uf.sigla;
+        });
+        if (names.length) {
+          STATE_NAMES = names;
+          STATE_UF_BY_NAME = ufMap;
+        }
+      } catch (err) {
+        // API indisponível: mantém a lista mínima de fallback (sem cidades)
+        console.warn('IBGE: falha ao carregar estados, usando lista local.', err);
+      }
+    }
+
+    async function loadCitiesForState(stateName) {
+      const uf = STATE_UF_BY_NAME[stateName];
+      if (!uf) {
+        // sem UF (API indisponível): sem lista de cidades para validar
+        return [];
+      }
+      if (CITY_CACHE[uf]) return CITY_CACHE[uf];
+      try {
+        const res = await fetch(IBGE_CITIES_URL(uf));
+        if (!res.ok) throw new Error('IBGE cities request failed');
+        const data = await res.json();
+        const cities = data.map((c) => c.nome);
+        CITY_CACHE[uf] = cities;
+        return cities;
+      } catch (err) {
+        console.warn(`IBGE: falha ao carregar cidades de ${stateName}.`, err);
+        return [];
+      }
+    }
+
+    // dispara o carregamento dos estados assim que o form inicializa
+    const statesReady = loadStates();
+
+    // ---- máscara de celular: (00) 00000-0000 / (00) 0000-0000 ----
+    const celularInput = document.getElementById('cf-celular');
+    if (celularInput) {
+      celularInput.addEventListener('input', () => {
+        let v = celularInput.value.replace(/\D/g, '').slice(0, 11);
+        if (v.length > 10) {
+          v = v.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
+        } else if (v.length > 6) {
+          v = v.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+        } else if (v.length > 2) {
+          v = v.replace(/(\d{2})(\d{0,5})/, '($1) $2');
+        } else if (v.length > 0) {
+          v = v.replace(/(\d{0,2})/, '($1');
+        }
+        celularInput.value = v.replace(/-$/, '').replace(/\)\s$/, ')');
+      });
+      celularInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && /[\s()-]$/.test(celularInput.value)) {
+          e.preventDefault();
+          celularInput.value = celularInput.value.slice(0, -1).replace(/[\s()-]+$/, '');
+        }
+      });
+    }
+
+    // ---- combo genérico: digitar OU escolher num dropdown ----
+    // getOptions pode retornar um array OU uma Promise<array> (usado
+    // para buscar as cidades do IBGE sob demanda)
+    function setupCombo({ wrapId, inputId, listId, getOptions, onSelect, onInput }) {
+      const wrap = document.getElementById(wrapId);
+      const input = document.getElementById(inputId);
+      const list = document.getElementById(listId);
+      const toggle = wrap ? wrap.querySelector('.combo-toggle') : null;
+      if (!wrap || !input || !list) return null;
+
+      let activeIndex = -1;
+      let renderToken = 0;
+
+      // trava extra além da opção "prevent" do Lenis: garante que a roda
+      // do mouse sobre o dropdown role só a lista, nunca a página —
+      // rola manualmente e impede a propagação do evento
+      list.addEventListener('wheel', (e) => {
+        const atTop = list.scrollTop === 0;
+        const atBottom = Math.ceil(list.scrollTop + list.clientHeight) >= list.scrollHeight;
+        if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atBottom)) {
+          e.preventDefault();
+        }
+        list.scrollTop += e.deltaY;
+        e.stopPropagation();
+      }, { passive: false });
+
+      function renderOptions(options, filterText) {
+        const filtered = filterText
+          ? options.filter((o) => o.toLowerCase().includes(filterText.toLowerCase()))
+          : options;
+
+        list.innerHTML = '';
+        if (!filtered.length) {
+          wrap.classList.remove('is-open');
+          return;
+        }
+        filtered.forEach((opt) => {
+          const item = document.createElement('div');
+          item.className = 'combo-option';
+          item.setAttribute('role', 'option');
+          item.textContent = opt;
+          item.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            input.value = opt;
+            wrap.classList.remove('is-open');
+            if (onSelect) onSelect(opt);
+          });
+          list.appendChild(item);
+        });
+        activeIndex = -1;
+        wrap.classList.add('is-open');
+      }
+
+      // getOptions() pode devolver array direto ou uma Promise (ex.: busca
+      // de cidades no IBGE). Enquanto a Promise não resolve, mostramos um
+      // item de "carregando..." no lugar da lista.
+      function renderList(filterText) {
+        const myToken = ++renderToken;
+        const result = getOptions();
+
+        if (result && typeof result.then === 'function') {
+          list.innerHTML = '<div class="combo-option combo-option-loading">Carregando…</div>';
+          wrap.classList.add('is-open');
+          result.then((options) => {
+            if (myToken !== renderToken) return; // resposta obsoleta, ignora
+            renderOptions(options || [], filterText);
+          });
+        } else {
+          renderOptions(result || [], filterText);
+        }
+      }
+
+      function openList() { renderList(input.value.trim()); }
+      function closeList() { wrap.classList.remove('is-open'); }
+
+      input.addEventListener('focus', openList);
+      input.addEventListener('input', () => {
+        renderList(input.value.trim());
+        if (onInput) onInput(input.value.trim());
+      });
+      input.addEventListener('blur', () => {
+        setTimeout(closeList, 120);
+      });
+      input.addEventListener('keydown', (e) => {
+        const items = Array.from(list.querySelectorAll('.combo-option'));
+        if (!items.length) return;
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          activeIndex = Math.min(activeIndex + 1, items.length - 1);
+          items.forEach((it, i) => it.classList.toggle('is-active', i === activeIndex));
+          items[activeIndex].scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          activeIndex = Math.max(activeIndex - 1, 0);
+          items.forEach((it, i) => it.classList.toggle('is-active', i === activeIndex));
+          items[activeIndex].scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'Enter') {
+          if (activeIndex >= 0 && items[activeIndex]) {
+            e.preventDefault();
+            input.value = items[activeIndex].textContent;
+            closeList();
+            if (onSelect) onSelect(input.value);
+          }
+        } else if (e.key === 'Escape') {
+          closeList();
+        }
+      });
+
+      if (toggle) {
+        toggle.addEventListener('click', () => {
+          if (wrap.classList.contains('is-open')) {
+            closeList();
+          } else {
+            input.focus();
+            openList();
+          }
+        });
+      }
+
+      document.addEventListener('click', (e) => {
+        if (!wrap.contains(e.target)) closeList();
+      });
+
+      return { renderList, closeList };
+    }
+
+    const cidadeInput = document.getElementById('cf-cidade');
+
+    // agora assíncrono: busca no cache, ou no IBGE, ou no fallback local
+    function citiesForState(stateName) {
+      return loadCitiesForState(stateName);
+    }
+
+    function findStateMatch(text) {
+      const norm = text.trim().toLowerCase();
+      return STATE_NAMES.find((s) => s.toLowerCase() === norm) || null;
+    }
+
+    async function updateCidadeAvailability(stateName) {
+      if (!cidadeInput) return;
+      if (!stateName) {
+        cidadeInput.disabled = true;
+        cidadeInput.value = '';
+        cidadeInput.placeholder = 'Selecione o estado primeiro';
+        return;
+      }
+      cidadeInput.disabled = true;
+      cidadeInput.placeholder = 'Carregando cidades…';
+      const cities = await citiesForState(stateName);
+      // evita condição de corrida se o usuário já trocou de estado
+      const estadoInput = document.getElementById('cf-estado');
+      const stillMatches = estadoInput && findStateMatch(estadoInput.value) === stateName;
+      if (!stillMatches) return;
+      if (cities.length) {
+        cidadeInput.disabled = false;
+        cidadeInput.placeholder = 'Digite ou escolha a cidade';
+      } else {
+        cidadeInput.disabled = true;
+        cidadeInput.value = '';
+        cidadeInput.placeholder = 'Selecione o estado primeiro';
+      }
+    }
+
+    // garante que a lista de estados (IBGE) esteja carregada antes de
+    // abrir o combo pela primeira vez
+    setupCombo({
+      wrapId: 'combo-estado',
+      inputId: 'cf-estado',
+      listId: 'combo-estado-list',
+      getOptions: () => statesReady.then(() => STATE_NAMES),
+      onSelect: (value) => {
+        if (cidadeInput) cidadeInput.value = '';
+        updateCidadeAvailability(value);
+      },
+      onInput: (value) => {
+        const matched = findStateMatch(value);
+        if (matched) {
+          if (cidadeInput) cidadeInput.value = '';
+          updateCidadeAvailability(matched);
+        } else {
+          updateCidadeAvailability(null);
+        }
+      }
+    });
+
+    setupCombo({
+      wrapId: 'combo-cidade',
+      inputId: 'cf-cidade',
+      listId: 'combo-cidade-list',
+      getOptions: () => {
+        const estadoInput = document.getElementById('cf-estado');
+        const matched = estadoInput ? findStateMatch(estadoInput.value) : null;
+        return matched ? citiesForState(matched) : Promise.resolve([]);
+      }
+    });
+
+    updateCidadeAvailability(null);
+
+    form.addEventListener('submit', async (e) => {
+      const estadoInput = document.getElementById('cf-estado');
+      const matched = estadoInput ? findStateMatch(estadoInput.value) : null;
+      if (estadoInput && !matched) {
+        e.preventDefault();
+        estadoInput.classList.add('is-invalid');
+        estadoInput.focus();
+        setTimeout(() => estadoInput.classList.remove('is-invalid'), 1500);
+        return;
+      }
+      if (cidadeInput && matched) {
+        // impede o envio até confirmarmos a cidade contra a lista do IBGE
+        e.preventDefault();
+        const validCities = await citiesForState(matched);
+        if (validCities.length && !validCities.includes(cidadeInput.value.trim())) {
+          cidadeInput.classList.add('is-invalid');
+          cidadeInput.focus();
+          setTimeout(() => cidadeInput.classList.remove('is-invalid'), 1500);
+          return;
+        }
+        form.submit();
+      }
+    });
+  })();
+
+  /* =========================================================
+     COOKIE BANNER
+     ========================================================= */
+  (function cookieBanner() {
+    const banner = document.getElementById('cookie-banner');
+    if (!banner) return;
+    const STORAGE_KEY = 'vhm-cookie-consent';
+
+    const acceptBtn = document.getElementById('cookie-accept');
+
+    function hasChoice() {
+      try {
+        return localStorage.getItem(STORAGE_KEY);
+      } catch (e) {
+        return null; // localStorage indisponível (ex.: modo privado bloqueado)
+      }
+    }
+
+    function saveChoice(value) {
+      try {
+        localStorage.setItem(STORAGE_KEY, value);
+      } catch (e) { /* ignora se não puder salvar */ }
+    }
+
+    function hideBanner() {
+      banner.classList.remove('is-visible');
+    }
+
+    if (!hasChoice()) {
+      // pequeno delay para não brigar com as animações de entrada da página
+      setTimeout(() => banner.classList.add('is-visible'), 900);
+    }
+
+    acceptBtn?.addEventListener('click', () => {
+      saveChoice('accepted');
+      hideBanner();
+    });
   })();
 
 });

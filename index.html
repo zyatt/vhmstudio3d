@@ -16,8 +16,20 @@
 
 <div id="scroll-progress"></div>
 
+<svg id="nav-wave" viewBox="0 0 1440 130" preserveAspectRatio="none" aria-hidden="true">
+  <path d="M0,58 C 180,78 300,36 480,56 C 660,74 780,34 960,54 C 1140,72 1260,36 1440,58 L1440,0 L0,0 Z"></path>
+</svg>
+
 <nav id="site-nav">
-  <a href="#hero" class="nav-logo">VHM<sup>studio3d</sup></a>
+  <a href="#hero" class="nav-logo"><img src="imagens/logo.png" alt="VHM Studio 3D" class="nav-logo-img"></a>
+  <a href="https://www.instagram.com/vhm.studio3d/" target="_blank" rel="noopener" class="nav-social">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="3" width="18" height="18" rx="5"/>
+      <circle cx="12" cy="12" r="4.2"/>
+      <circle cx="17.2" cy="6.8" r="0.6" fill="currentColor" stroke="none"/>
+    </svg>
+    <span class="nav-social-text"><span class="nav-social-label">Siga-nos</span> <span class="nav-social-handle">@vhm.studio3d</span></span>
+  </a>
   <div class="nav-links">
     <a href="#hero">Início</a>
     <a href="#work">Projetos</a>
@@ -44,19 +56,43 @@
 <section id="hero">
   <div id="hero-canvas-wrap"><canvas id="hero-canvas"></canvas></div>
 
-  <div class="wrap hero-top">
-    <div class="eyebrow">Impressão 3D sob medida</div>
-    <h1 class="hero-title">
-      <span class="line"><span>Texto texto texto</span></span>
-      <span class="line"><span>texto <span class="accent">texto texto</span>.</span></span>
-    </h1>
-    <p class="hero-sub">Descrição.</p>
-  </div>
+  <div class="wrap hero-grid">
 
-  <div class="wrap hero-bottom">
-    <a href="#contact" class="hero-cta">Solicitar orçamento
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    <div class="hero-media" id="hero-media">
+      <div class="hero-media-grid" id="hero-media-grid">
+        <div class="hero-media-slot hero-media-slot-main">
+          <img class="hero-media-img" src="imagens/inicio/01.png" alt="VHM Studio 3D">
+        </div>
+        <div class="hero-media-slot">
+          <img class="hero-media-img" src="imagens/inicio/02.png" alt="VHM Studio 3D">
+        </div>
+        <div class="hero-media-slot">
+          <img class="hero-media-img" src="imagens/inicio/03.png" alt="VHM Studio 3D">
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-content">
+      <div class="hero-top">
+        <div class="eyebrow">Impressão 3D sob medida</div>
+        <h1 class="hero-title">
+          <span class="line"><span>Impressão 3D <span class="accent">Premium</span></span></span>
+          <span class="line"><span>Produtos personalizados</span></span>
+        </h1>
+        <p class="hero-sub">Enviamos para todo o Brasil.</p>
+      </div>
+
+      <div class="hero-bottom">
+        <a href="#contact" class="hero-cta">Solicitar orçamento
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <a href="https://www.mercadolivre.com.br" target="_blank" rel="noopener" class="hero-ml-float" aria-label="Confira também no Mercado Livre">
+      <img src="imagens/mercadolivre.png" alt="Mercado Livre" class="hero-ml-float-icon">
     </a>
+
   </div>
 </section>
 
@@ -66,7 +102,6 @@
      depois da última imagem. Imagens em imagens/trabalhos/01..06.webp
      ========================================================= -->
 <section id="work" class="section-pad">
-  <div class="work-bg" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
 
   <div class="wrap work-pin-head">
     <div class="eyebrow">Projetos</div>
@@ -174,34 +209,50 @@
     <div class="section-head">
       <div>
         <div class="eyebrow">Vídeos</div>
-        <h2><div class="reveal-wrap"><span class="reveal-inner">Título</span></div></h2>
+        <h2><div class="reveal-wrap"><span class="reveal-inner">Impressão</span></div></h2>
       </div>
-      <p class="section-note">Descrição.</p>
+      <p class="section-note">Acompanhe de perto o processo de impressão 3D, do modelo em movimento até a peça finalizada.</p>
     </div>
 
     <div class="video-layout">
       <div class="video-stage" id="video-stage">
         <div class="video-live-badge"><span class="video-live-dot"></span>Gravação</div>
-        <video id="video-main" src="videos/01.mp4" poster="imagens/videos/01.jpg" autoplay muted loop playsinline></video>
+        <button class="video-sound-btn" id="video-sound-btn" aria-label="Ativar som" aria-pressed="false">
+          <svg id="video-sound-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 5 6 9H2v6h4l5 4V5z"/>
+            <line x1="23" y1="9" x2="17" y2="15"/>
+            <line x1="17" y1="9" x2="23" y2="15"/>
+          </svg>
+        </button>
+        <video id="video-main" src="videos/01.mp4" muted playsinline></video>
+
+        <div class="video-center-icon" id="video-center-icon">
+          <svg id="video-center-icon-svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6 5h4v14H6zM14 5h4v14h-4z"/>
+          </svg>
+        </div>
+
+        <div class="video-progress-bar" id="video-progress-bar">
+          <div class="video-progress-track">
+            <div class="video-progress-buffered" id="video-progress-buffered"></div>
+            <div class="video-progress-filled" id="video-progress-filled"></div>
+            <div class="video-progress-thumb" id="video-progress-thumb"></div>
+          </div>
+        </div>
+
         <div class="video-caption">
           <div>
             <div class="video-caption-title" id="video-main-title">Título1</div>
             <div class="video-caption-tag" id="video-main-tag">Subtítulo1</div>
           </div>
-          <button class="video-sound-btn" id="video-sound-btn" aria-label="Ativar som" aria-pressed="false">
-            <svg id="video-sound-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 5 6 9H2v6h4l5 4V5z"/>
-              <line x1="23" y1="9" x2="17" y2="15"/>
-              <line x1="17" y1="9" x2="23" y2="15"/>
-            </svg>
-          </button>
+          <span class="video-time" id="video-time">0:00 / 0:00</span>
         </div>
       </div>
 
       <div class="video-list" id="video-list">
-        <button class="video-thumb is-active" data-src="videos/01.mp4" data-title="Título1" data-tag="Subtítulo1" data-poster="imagens/videos/01.jpg">
+        <button class="video-thumb is-active" data-src="videos/01.mp4" data-title="Título1" data-tag="Subtítulo1">
           <div class="video-thumb-frame">
-            <img src="imagens/videos/01.jpg" alt="Miniatura vídeo 1" loading="lazy">
+            <video src="videos/01.mp4" muted playsinline preload="metadata"></video>
             <div class="video-thumb-play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
           </div>
           <div class="video-thumb-info">
@@ -209,9 +260,9 @@
             <div class="video-thumb-tag">Subtítulo1</div>
           </div>
         </button>
-        <button class="video-thumb" data-src="videos/02.mp4" data-title="Título2" data-tag="Subtítulo2" data-poster="imagens/videos/02.jpg">
+        <button class="video-thumb" data-src="videos/02.mp4" data-title="Título2" data-tag="Subtítulo2">
           <div class="video-thumb-frame">
-            <img src="imagens/videos/02.jpg" alt="Miniatura vídeo 2" loading="lazy">
+            <video src="videos/02.mp4" muted playsinline preload="metadata"></video>
             <div class="video-thumb-play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
           </div>
           <div class="video-thumb-info">
@@ -219,9 +270,9 @@
             <div class="video-thumb-tag">Subtítulo2</div>
           </div>
         </button>
-        <button class="video-thumb" data-src="videos/03.mp4" data-title="Título3" data-tag="Subtítulo3" data-poster="imagens/videos/03.jpg">
+        <button class="video-thumb" data-src="videos/03.mp4" data-title="Título3" data-tag="Subtítulo3">
           <div class="video-thumb-frame">
-            <img src="imagens/videos/03.jpg" alt="Miniatura vídeo 3" loading="lazy">
+            <video src="videos/03.mp4" muted playsinline preload="metadata"></video>
             <div class="video-thumb-play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
           </div>
           <div class="video-thumb-info">
@@ -229,9 +280,9 @@
             <div class="video-thumb-tag">Subtítulo3</div>
           </div>
         </button>
-        <button class="video-thumb" data-src="videos/04.mp4" data-title="Título4" data-tag="Subtítulo4" data-poster="imagens/videos/04.jpg">
+        <button class="video-thumb" data-src="videos/04.mp4" data-title="Título4" data-tag="Subtítulo4">
           <div class="video-thumb-frame">
-            <img src="imagens/videos/04.jpg" alt="Miniatura vídeo 4" loading="lazy">
+            <video src="videos/04.mp4" muted playsinline preload="metadata"></video>
             <div class="video-thumb-play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
           </div>
           <div class="video-thumb-info">
@@ -291,12 +342,48 @@
      ========================================================= -->
 <section id="contact" class="section-pad">
   <div class="wrap">
-    <div class="eyebrow" style="justify-content:center; color:rgba(255,255,255,.5)">Vamos imprimir sua ideia</div>
+    <div class="eyebrow" style="justify-content:center;">Vamos imprimir sua ideia</div>
     <h2><div class="reveal-wrap"><span class="reveal-inner">Tem um modelo — ou só uma ideia?</span></div></h2>
-    <p class="section-note">Envie o arquivo ou descreva a peça que você precisa. Respondemos com prazo e valor em até 24h.</p>
-    <a href="mailto:email@.com" class="hero-cta">email@.com
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-    </a>
+    <p class="section-note">Preencha o formulário abaixo com os detalhes da sua peça. Respondemos com prazo e valor em até 24h.</p>
+
+    <form id="contact-form" class="contact-form" action="mailto:email@.com" method="post" enctype="text/plain">
+      <div class="contact-field">
+        <label for="cf-nome">Nome completo</label>
+        <input type="text" id="cf-nome" name="nome" placeholder="Seu nome completo" required>
+      </div>
+      <div class="contact-field">
+        <label for="cf-celular">Celular</label>
+        <input type="tel" id="cf-celular" name="celular" placeholder="(00) 00000-0000" required>
+      </div>
+      <div class="contact-field">
+        <label for="cf-email">E-mail</label>
+        <input type="email" id="cf-email" name="email" placeholder="seuemail@exemplo.com" required>
+      </div>
+      <div class="contact-field contact-field-half">
+        <label for="cf-estado">Estado</label>
+        <div class="combo-field" id="combo-estado">
+          <input type="text" id="cf-estado" name="estado" placeholder="Digite ou escolha o estado" autocomplete="off" required>
+          <button type="button" class="combo-toggle" aria-label="Mostrar estados"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="combo-list" id="combo-estado-list" role="listbox"></div>
+        </div>
+      </div>
+      <div class="contact-field contact-field-half">
+        <label for="cf-cidade">Cidade</label>
+        <div class="combo-field" id="combo-cidade">
+          <input type="text" id="cf-cidade" name="cidade" placeholder="Selecione o estado primeiro" autocomplete="off" disabled required>
+          <button type="button" class="combo-toggle" aria-label="Mostrar cidades"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="combo-list" id="combo-cidade-list" role="listbox"></div>
+        </div>
+      </div>
+      <div class="contact-field contact-field-full">
+        <label for="cf-mensagem">Mensagem</label>
+        <textarea id="cf-mensagem" name="mensagem" rows="4" placeholder="Descreva a peça que você precisa..." required></textarea>
+      </div>
+
+      <button type="submit" class="hero-cta contact-submit">Enviar solicitação
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </form>
   </div>
 </section>
 
@@ -321,14 +408,25 @@
 </button>
 
 <a href="https://wa.me/5542999923662" target="_blank" rel="noopener" id="whatsapp-float" aria-label="Fale conosco no WhatsApp">
+  <span id="whatsapp-tooltip">Entre em contato</span>
   <svg viewBox="0 0 32 32" fill="#fff" xmlns="http://www.w3.org/2000/svg">
     <path d="M16.001 2.667c-7.363 0-13.334 5.97-13.334 13.333 0 2.353.617 4.66 1.788 6.687L2.667 29.333l6.79-1.78a13.29 13.29 0 0 0 6.544 1.714h.006c7.362 0 13.333-5.97 13.333-13.333S23.363 2.667 16.001 2.667zm0 24.4h-.005a11.06 11.06 0 0 1-5.63-1.54l-.404-.24-4.03 1.057 1.076-3.928-.263-.403a11.05 11.05 0 0 1-1.693-5.912c0-6.111 4.973-11.084 11.086-11.084 2.962 0 5.747 1.154 7.84 3.249a11.02 11.02 0 0 1 3.245 7.842c-.001 6.111-4.973 11.084-11.086 11.084 0 0 .002 0 0 0-.002 0-.002 0-.001 0zm6.077-8.29c-.333-.167-1.97-.972-2.275-1.083-.305-.111-.527-.167-.75.167-.222.333-.86 1.083-1.055 1.305-.194.222-.389.25-.722.083-.333-.167-1.406-.518-2.678-1.652-.99-.883-1.658-1.973-1.852-2.306-.194-.333-.02-.513.147-.679.15-.15.333-.389.5-.583.167-.194.222-.333.333-.556.111-.222.056-.417-.028-.583-.083-.167-.75-1.807-1.028-2.474-.271-.65-.546-.562-.75-.572l-.639-.011c-.222 0-.583.083-.888.417-.305.333-1.166 1.14-1.166 2.78 0 1.641 1.194 3.226 1.361 3.448.167.222 2.351 3.59 5.696 5.034.796.343 1.417.548 1.901.702.799.254 1.526.218 2.101.132.641-.096 1.97-.805 2.247-1.583.278-.778.278-1.445.194-1.584-.083-.139-.305-.222-.639-.389z"/>
   </svg>
 </a>
 
+<div id="cookie-banner" role="dialog" aria-live="polite" aria-label="Aviso de cookies">
+  <p id="cookie-text">
+    Usamos cookies para melhorar sua experiência no site. Ao continuar navegando, você concorda com o uso de cookies.
+  </p>
+  <div id="cookie-actions">
+    <button id="cookie-accept" type="button">Entendi</button>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+
 <script src="script.js"></script>
 </body>
 </html>
